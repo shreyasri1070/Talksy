@@ -1,11 +1,24 @@
-import React from 'react'
+import Hero from "../components/Dashboard/Hero";
+import { useAuth } from "../context/AuthContext";
+import LandingNav from "../components/Dashboard/Navbar";
+import Footer from "../components/Dashboard/Footer";
+import Features from "../pages/Features";
+import Payments from "../pages/Payment";
+import CustomerLogos from "../pages/CustomerLogos";
 
 const Home = () => {
-  return (
-    <div>
-      
-    </div>
-  )
-}
+  const { isAuthenticated } = useAuth();
 
-export default Home
+  return (
+    <div className="bg-black">
+      <LandingNav />
+      <Hero />
+      <Features />
+      <Payments />
+      <CustomerLogos />
+      <Footer />
+    </div>
+  );
+};
+
+export default Home;
