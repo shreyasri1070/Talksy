@@ -3,8 +3,8 @@ import { User } from "../models/userModel.js";
 import Token from "../models/tokenModel.js"
 export const verifyEmail=async(req,res)=>{
 try{
-    const user=User.findById(req.params.id);
-
+    const user=await User.findById(req.params.id);
+console.log("check",user)
     if(!user){
         return res.status(400).send({ message: "User doesn't exist" });
     }
@@ -17,10 +17,11 @@ try{
       userId: user._id,
       token: req.params.token,
     });
-
+console.log(token,"new");
     if (!token) {
       return res.status(400).send({ message: "Invalid Link" });
     }
+    
 
     if (token.expiresAt < Date.now()) {
       user.verificationLinkSent = false;
@@ -31,7 +32,7 @@ try{
     user.verified = true;
     await user.save();
 
-    res.status(200).send({ message: "Email Verified Successfully" });
+   return res.status(200).send({ message: "Email Verified Successfully" });
 }catch (error) {
     console.error("Error in verifyEmail:", error);
     res.status(500).send({ message: "Internal Server Error" });

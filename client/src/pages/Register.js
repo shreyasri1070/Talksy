@@ -11,19 +11,18 @@ const Register = () => {
         lastName:"",
         password:""
     });
+const handleSubmit = async (e) => {
+  e.preventDefault(); // ✅ MUST
 
-    const handleSubmit=async()=>{
-        try {
-             const res=register(data);
-          console.log(res.message);
-      toast.success(res.message);
-            
-        } catch (error) {
-            toast.error(error.message);
-            console.log(error);
-        }
-       
-    }
+  try {
+    const res = await register(data);
+    console.log(res.data.message);
+    toast.success(res.data.message);
+  } catch (error) {
+    toast.error(error.response?.data?.message || error.message);
+    console.log(error);
+  }
+};
 
     const handleChange =(e)=>{
         setData({...data,[e.target.name]:e.target.value})

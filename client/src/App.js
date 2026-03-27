@@ -9,6 +9,8 @@ import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import VerifyEmail from './pages/verifyEmail';
+import ChatHome from './components/Chat/ChatHome';
+import Profile from './pages/Profile';
 
 const Layout = () => {
   const { isAuthenticated, checkAuth } = useAuth();
@@ -43,6 +45,14 @@ const router=createBrowserRouter([
       {
         path: "users/:id/verify/:token",
         element: <VerifyEmail />,
+      },
+       {
+        path: "chathome",
+        element: <ChatHome />,
+      },
+      {
+        path: "profile",
+        element: <Profile />,
       },
 
 ]

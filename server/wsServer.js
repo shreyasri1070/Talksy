@@ -1,6 +1,6 @@
 import  { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
-import fs from "fs";
+
 import Message from "./models/messageModel.js";
 import {User}  from "./models/userModel.js"
 
@@ -20,6 +20,7 @@ export const createWebSocketServer=(server)=>{
             [...wss.clients].forEach((client)=>{
                 client.send(JSON.stringify({online:onlineUsers}));
             });
+             console.log("Online Users:", onlineUsers);
         }
             connection.isAlive = true;
 connection.timer=setInterval(()=>{
@@ -37,20 +38,33 @@ connection.timer=setInterval(()=>{
       clearTimeout(connection.deathTimer);
     });
 
-    const cookies = req.headers.cookie;
-if(cookies){
-    console.log(cookies);
-    const tokenString=cookies.split(";").find((str)=>{str.startsWith("authToken=")})
-    if(tokenString){
-         const token = tokenString.split("=")[1];
-        jwt.verify(token, process.env.JWTPRIVATEKEY, {}, (err, userData) => {
-          if (err) console.log(err);
+  const cookies = req.headers.cookie;
 
-          const { _id, firstName, lastName } = userData;
-          connection.userId = _id;
-          connection.username = `${firstName} ${lastName}`;
-        });
-    }
+if (cookies) {
+  const tokenString = cookies
+    .split(";")
+    .find((str) => str.trim().startsWith("authToken="));
+
+  if (tokenString) {
+    const token = tokenString.split("=")[1];
+
+jwt.verify(token, process.env.KEY, {}, async (err, userData) => {
+  if (err) {
+    console.log("JWT Error:", err);
+    return;
+  }
+
+  const { id } = userData;
+
+  const user = await User.findById(id);
+
+  connection.userId = user._id;
+  connection.username = user.firstName + " " + user.lastName;
+
+
+       notifyAboutOnlinePeople();
+    });
+  }
 }
 
 connection.on("message",async(message)=>{
@@ -78,9 +92,9 @@ connection.on("message",async(message)=>{
 
 })
 
- notifyAboutOnlinePeople();
+
     // Sending online user list to all clients
-    console.log("Online Users:", onlineUsers);
+   
 
         
     })

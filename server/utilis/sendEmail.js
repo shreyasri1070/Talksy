@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 export default async(email,subject,text)=>{
     try {
         const transporter=nodemailer.createTransport({
-            host:process.env.HOST,
+         
             service:process.env.SERVICE,
             auth: {
         user: process.env.SMTP_USER,
@@ -13,7 +13,7 @@ export default async(email,subject,text)=>{
         });
         
     await transporter.sendMail({
-      from: process.env.USER,
+      from: process.env.SMTP_USER,
       to: email,
       subject: subject,
       text: text,
@@ -22,7 +22,7 @@ export default async(email,subject,text)=>{
     console.log(`Email sent to ${email}`);
     } catch (error) {
           console.error("Email error:", error);
-    throw error;
+    return false;
     }
     
 }

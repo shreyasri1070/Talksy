@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom"; // Make sure to import usePa
 import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import api from "../Api";
 
 const VerifyEmail = () => {
   const { id, token } = useParams();
@@ -20,10 +21,10 @@ const VerifyEmail = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/user/${id}/verify/${token}`);
+        const response = await api.get(`/user/${id}/verify/${token}`);
 
         toast.success(response.data.message);
-        // console.log("Verification successful:", response.data);
+        console.log("Verification successful:", response.data);
       } catch (error) {
         setLoading(false);
         toast.error(error.response.data.message);
@@ -35,7 +36,7 @@ const VerifyEmail = () => {
     fetchData();
   }, [id, token]);
   return (
-    <div className="bg-dark min-h-screen text-white flex justify-center items-center flex-col">
+    <div className="bg-red-900 min-h-screen text-white flex justify-center items-center flex-col">
       {loading && (
         <div className="mb-10 flex flex-col items-center" role="status">
           <svg

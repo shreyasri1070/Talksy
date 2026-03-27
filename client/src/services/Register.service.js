@@ -1,17 +1,18 @@
 import api from "../Api";
-export const register=(data)=>{
+export const register=async(data)=>{
     try{
-    const res=api.post("/user/register",data);
+    const res=await api.post("/user/register",data);
     return res;
     }catch(error){
+        console.log(error)
         throw error;
 
     }
 }
 
-export const login=(data)=>{
+export const login=async(data)=>{
     try {
-        const res=api.post("/user/login",data);
+        const res=await api.post("/user/login",data);
         return res;
         
     } catch (error) {
@@ -19,9 +20,9 @@ export const login=(data)=>{
     }
 }
 
-export const verifyEmail=(id,token)=>{
+export const verifyEmail=async(id,token)=>{
     try {
-        const res=api.get(`/api/user/${id}/verify/${token}`);
+        const res=await api.get(`/user/${id}/verify/${token}`);
         return res;
     } catch (error) {
         throw error;

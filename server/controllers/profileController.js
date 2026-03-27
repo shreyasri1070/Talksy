@@ -4,7 +4,7 @@ import {User} from "../models/userModel.js"
 export const profileController = async(req,res) => {
     const token=req.cookies?.authToken;
     if(token){
-       jwt.verify(token,process.env.key,async(err,userData)=>{
+       jwt.verify(token,process.env.kEY,async(err,userData)=>{
         if(err){
             throw err;
         }
@@ -26,7 +26,7 @@ export const updateProfileController = async (req, res) => {
       return res.status(401).json("No Token Available");
     }
 
-    jwt.verify(token, process.env.key, async (err, userData) => {
+    jwt.verify(token, process.env.KEY, async (err, userData) => {
       if (err) {
         return res.status(403).json("Invalid token");
       }
