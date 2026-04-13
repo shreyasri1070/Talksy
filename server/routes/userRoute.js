@@ -4,7 +4,7 @@ import registerController from "../controllers/registerController.js";
 import loginController from "../controllers/loginController.js";
 import {verifyEmail} from "../controllers/emailVerification.js";
 import {profileController, updateProfileController} from "../controllers/profileController.js";
-import messageController from "../controllers/messageController.js";
+
 import peopleController from "../controllers/peopleController.js";
 import protect from "../middleware/protect.js";
 
@@ -14,7 +14,7 @@ router.post("/register", registerController);
 router.post("/login", loginController);
 router.get("/:id/verify/:token", verifyEmail);
 router.get("/profile",profileController);
-router.get("/messages/:userId", protect, messageController);
+
 
 router.get("/people", peopleController);
 router.put("/profile/update", updateProfileController);

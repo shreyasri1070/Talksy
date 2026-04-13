@@ -6,8 +6,16 @@ const TopBar = ({
   offlinePeople,
   onlinePeople,
 }) => {
+  const onlineUser = onlinePeople[selectedUserId];
+  const offlineUser = offlinePeople[selectedUserId];
+
+  const displayName = onlineUser?.username
+    || (offlineUser ? `${offlineUser.firstName} ${offlineUser.lastName}` : "Loading...");
+
+  const isOnline = !!onlineUser;
+
   return (
-    <div className="absolute right-2 text-white w-full py-5  bg-transparent z-20 backdrop-blur-xl flex items-center px-5 gap-2 text-lg font-semibold border-b border-gray-700 capitalize">
+    <div className="absolute right-2 text-white w-full py-5 bg-transparent z-20 backdrop-blur-xl flex items-center px-5 gap-2 text-lg font-semibold border-b border-gray-700 capitalize">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
@@ -16,7 +24,7 @@ const TopBar = ({
         stroke="currentColor"
         className="w-6 h-6"
         role="button"
-        onClick={(e) => setSelectedUserId(null)}
+        onClick={() => setSelectedUserId(null)}
       >
         <path
           strokeLinecap="round"
@@ -24,24 +32,15 @@ const TopBar = ({
           d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
         />
       </svg>
-      {
-        <>
-          {onlinePeople[selectedUserId] ? (
-            <>
-              {onlinePeople[selectedUserId].username}
-              <span className="h-3 rounded-full aspect-square bg-green-400"></span>
-            </>
-          ) : (
-            <>
-              <span>{offlinePeople[selectedUserId].firstName}</span>
 
-              <span className="h-3 rounded-full aspect-square bg-gray-400"></span>
-            </>
-          )}
-        </>
-      }
+      <span>{displayName}</span>
+      <span
+        className={`h-3 rounded-full aspect-square ${
+          isOnline ? "bg-green-400" : "bg-gray-400"
+        }`}
+      ></span>
     </div>
   );
 };
 
-export default TopBar
+export default TopBar;

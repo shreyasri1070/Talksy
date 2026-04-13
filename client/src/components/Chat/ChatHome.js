@@ -1,161 +1,174 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useProfile } from "../../context/ProfileContext";
-import axios from "axios";
 import ChatMessages from "../Chat/ChatMessages";
 import MessageInputForm from "../Chat/MessageInputForm";
 import Nav from "../Chat/Nav";
 import OnlineUsersList from "../Chat/OnlineUserList";
 import TopBar from "../Chat/TopBar";
-import { socketUrl } from "../../Config";  
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../../Api";
+import { io } from "socket.io-client"; // ✅ replaces WebSocket
+import { baseUrl } from "../../Config";
+
+
 
 const ChatHome = () => {
-  const [ws, setWs] = useState(null);
   const [onlinePeople, setOnlinePeople] = useState({});
   const [offlinePeople, setOfflinePeople] = useState({});
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [messages, setMessages] = useState([]);
+const [messagesMap, setMessagesMap] = useState({});
   const [newMessage, setNewMessage] = useState("");
+  const [wsReady, setWsReady] = useState(false);
+const messages = messagesMap[selectedUserId] || [];
   const { userDetails } = useProfile();
   const { isAuthenticated, checkAuth } = useAuth();
   const navigate = useNavigate();
-  const connectToWebSocket = () => {
-    const ws = new WebSocket(socketUrl);
-    ws.addEventListener("message", handleMessage);
-    setWs(ws);
-  };
-  useEffect(() => {
-    connectToWebSocket();
-    ws?.addEventListener("close", () => {
-      connectToWebSocket();
-    });
-  }, [userDetails, selectedUserId]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (selectedUserId) {
-        try {
-          const res = await api.get(`/user/messages/${selectedUserId}`);
-          setMessages(res.data);
-        } catch (error) {
-          console.error("Error fetching messages:", error);
-        }
+  const socketRef = useRef(null);
+  const selectedUserIdRef = useRef(null);
+  const userDetailsRef = useRef(null);
+
+  useEffect(() => { selectedUserIdRef.current = selectedUserId; }, [selectedUserId]);
+  useEffect(() => { userDetailsRef.current = userDetails; }, [userDetails]);
+
+  const showOnlinePeople = useCallback((peopleArray) => {
+    const people = {};
+    peopleArray.forEach(({ userId, username, avatarLink }) => {
+      if (userId !== userDetailsRef.current?._id) {
+        people[userId] = { username, avatarLink };
       }
-    };
+    });
+    setOnlinePeople(people);
+  }, []);
 
-    fetchData();
-  }, [selectedUserId]);
-
+  // ✅ Connect once when userDetails._id is available
   useEffect(() => {
+    if (!userDetails?._id) return;
+    if (socketRef.current?.connected) return; // don't reconnect if already connected
+
+    console.log("🔌 Connecting Socket.IO...");
+
+    const socket = io(baseUrl, {
+      withCredentials: true, // ✅ sends cookies for JWT auth
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("✅ Socket.IO connected:", socket.id);
+      setWsReady(true);
+    });
+
+    // ✅ Listen for online users (was messageData.online)
+    socket.on("online", (onlineUsers) => {
+      showOnlinePeople(onlineUsers);
+    });
+
+    // ✅ Listen for incoming messages (was messageData.text)
+ socket.on("message", (messageData) => {
+  if (messageData.sender === selectedUserIdRef.current) {
+    setMessagesMap((prev) => ({
+      ...prev,
+      [selectedUserIdRef.current]: [
+        ...(prev[selectedUserIdRef.current] || []),
+        messageData,
+      ],
+    }));
+  }
+});
+
+    socket.on("disconnect", () => {
+      console.log("❌ Socket.IO disconnected");
+      setWsReady(false);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Socket.IO error:", err.message);
+    });
+
+    return () => {
+      socket.off("online");
+      socket.off("message");
+      // ✅ Don't disconnect — let it persist across renders
+    };
+  }, [userDetails?._id, showOnlinePeople]);
+
+  // Fetch offline people
+  useEffect(() => {
+    if (!userDetails?._id) return;
     api.get("/user/people").then((res) => {
-      // console.log(res.data);
       const offlinePeopleArr = res?.data
-        .filter((p) => p._id !== userDetails?._id)
+        .filter((p) => p._id !== userDetails._id)
         .filter((p) => !onlinePeople[p._id]);
 
-      const offlinePeopleWithAvatar = offlinePeopleArr.map((p) => ({
-        ...p,
-        avatarLink: p.avatarLink, // assuming avatarLink is a property of p
-      }));
-
       setOfflinePeople(
-        offlinePeopleWithAvatar.reduce((acc, p) => {
+        offlinePeopleArr.reduce((acc, p) => {
           acc[p._id] = p;
           return acc;
         }, {})
       );
     });
-  }, [onlinePeople, userDetails]);
+  }, [onlinePeople, userDetails?._id]);
 
-  useEffect(() => {
-    const handleRealTimeMessage = (event) => {
-      const messageData = JSON.parse(event.data);
+useEffect(() => {
+  if (!selectedUserId) return;
+  
+  // ✅ Don't refetch if already cached
+  if (messagesMap[selectedUserId]) return;
 
-      if ("text" in messageData) {
-        setMessages((prev) => [...prev, { ...messageData }]);
-      }
-    };
+  api.get(`/user/messages/${selectedUserId}`)
+    .then((res) => {
+      setMessagesMap((prev) => ({
+        ...prev,
+        [selectedUserId]: res.data,
+      }));
+    })
+    .catch((err) => console.error("Error fetching messages:", err));
+}, [selectedUserId]);
 
-    // Add event listener for real-time messages
-    if (ws) {
-      ws.addEventListener("message", handleRealTimeMessage);
-    }
-
-    return () => {
-      // Remove the event listener when component unmounts
-      if (ws) {
-        ws.removeEventListener("message", handleRealTimeMessage);
-      }
-    };
-  }, [ws, selectedUserId]);
-
-  const showOnlinePeople = (peopleArray) => {
-    const people = {};
-    peopleArray.forEach(({ userId, username, avatarLink }) => {
-      if (userId !== userDetails?._id) {
-        people[userId] = {
-          username,
-          avatarLink, // include avatarLink for online users
-        };
-      }
-    });
-
-    setOnlinePeople(people);
-  };
-
-  const handleMessage = (ev) => {
-    const messageData = JSON.parse(ev.data);
-    if ("online" in messageData) {
-      showOnlinePeople(messageData.online);
-    } else if ("text" in messageData) {
-      if (messageData.sender === selectedUserId) {
-        setMessages((prev) => [...prev, { ...messageData }]);
-      }
-    }
-  };
-
-  const sendMessage = (ev) => {
-    if (ev) ev.preventDefault();
-    console.log("sending message");
-    console.log(newMessage, selectedUserId);
-    ws.send(JSON.stringify({ text: newMessage, recipient: selectedUserId }));
-    setNewMessage("");
-    setMessages((prev) => [
-      ...prev,
-      {
-        text: newMessage,
-        sender: userDetails._id,
-        recipient: selectedUserId,
-        _id: Date.now(),
-      },
-    ]);
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (selectedUserId) {
-        try {
-          const res = await api.get(`/user/messages/${selectedUserId}`);
-          setMessages(res.data);
-        } catch (error) {
-          console.error("Error fetching messages:", error);
-        }
-      }
-    };
-
-    fetchData();
-  }, [selectedUserId]);
+  // Auth check
   useEffect(() => {
     checkAuth();
-    if (!isAuthenticated) {
-      navigate("/");
-    }
+    if (!isAuthenticated) navigate("/");
   }, []);
-  console.log(selectedUserId)
+
+  // ✅ Send message
+const sendMessage = (ev, mediaData = null) => {
+  if (ev) ev.preventDefault();
+  if (!mediaData && !newMessage.trim()) return;
+  if (!selectedUserId) return;
+
+  const socket = socketRef.current;
+  if (!socket?.connected) return;
+
+  const payload = {
+    recipient: selectedUserId,
+    text: mediaData ? "" : newMessage,
+    mediaUrl: mediaData?.mediaUrl || null,
+    publicId: mediaData?.publicId || null,
+    mediaType: mediaData?.mediaType || null,
+  };
+
+  socket.emit("message", payload);
+
+  setMessagesMap((prev) => ({
+    ...prev,
+    [selectedUserId]: [
+      ...(prev[selectedUserId] || []),
+      {
+        ...payload,
+        sender: userDetails._id,
+        _id: Date.now(),
+      },
+    ],
+  }));
+
+  if (!mediaData) setNewMessage("");
+};
+
   return (
-    <div className="flex min-h-screen  bg-black ">
+    <div className="flex min-h-screen bg-black">
       <Nav />
       <OnlineUsersList
         onlinePeople={onlinePeople}
@@ -172,7 +185,6 @@ const ChatHome = () => {
             onlinePeople={onlinePeople}
           />
         )}
-
         <ChatMessages
           messages={messages}
           userDetails={userDetails}

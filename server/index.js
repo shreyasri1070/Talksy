@@ -1,28 +1,31 @@
 import dotenv from "dotenv";
 dotenv.config();
-
 import express from "express";
+import http from "http";              // ✅ add this
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
-import connection from "./db/db.js"
+import connection from "./db/db.js";
 import userRoute from "./routes/userRoute.js";
 import avatarRoute from "./routes/avatarRoute.js";
-import { createWebSocketServer } from "./wsServer.js";
-
+import messageRoute from "./routes/messageRoute.js"
+ 
+import { createSocketServer } from "./socket.js";
+import uploadRoute from "./routes/uploadRoute.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-//database connection
-connection();
-const app = express();
 
+connection();
+
+const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:4000",
+  "http://localhost:5173",           //add your Vite frontend port
   "https://swifty-chatty-appy.onrender.com",
 ];
 
@@ -39,27 +42,13 @@ const corsOption = {
 };
 
 app.use(cors(corsOption));
-
 app.use("/api/user", userRoute);
 app.use("/api/avatar", avatarRoute);
+app.use("/api/upload", uploadRoute);
+app.use("/api/user/message", messageRoute);
+const port = process.env.port || 8000;      // ✅ lowercase port
 
-const port = process.env.PORT || 8000;
+const server = http.createServer(app);      // ✅ create http server from app
+createSocketServer(server);                 // ✅ attach socket BEFORE listen
 
-const server = app.listen(port, () => {
-  console.log("server is listening",port);
-});
-createWebSocketServer(server);
-
-// app.use(express.static(path.join(__dirname, "..", "frontend", "dist")));
-
-// app.use((req, res) => {
-//   res.sendFile(
-//     path.join(__dirname, "../frontend/dist/index.html"),
-//     (err) => {
-//       if (err) {
-//         console.error("Error sending file:", err);
-//       }
-//     }
-//   );
-// });
-
+server.listen(port, () => console.log(`Server running on ${port}`)); // ✅ use port not PORT
