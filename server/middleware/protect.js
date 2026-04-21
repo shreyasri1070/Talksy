@@ -1,6 +1,7 @@
-import jwt from "jsonwebtoken";
+// middleware/protect.js
+import { verifyAndCacheToken } from "../Services/sessionService.js"; // ← use existing service
 
-function protect(req, res, next) {
+async function protect(req, res, next) {
   try {
     const token =
       req.cookies?.authToken || req.headers.authorization?.split(" ")[1];
@@ -9,11 +10,10 @@ function protect(req, res, next) {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const userData = jwt.verify(token, process.env.KEY);
-
-    req.user = userData; // attach decoded user info
-
+    // verifyAndCacheToken handles Redis check + jwt.verify internally
+    req.user = await verifyAndCacheToken(token);
     next();
+
   } catch (err) {
     res.status(401).json({ message: "Invalid or expired token" });
   }
